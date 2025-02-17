@@ -2,6 +2,7 @@ from abc import ABCMeta
 from collections.abc import Callable
 
 from modules.util.DiffusionScheduleCoefficients import DiffusionScheduleCoefficients
+from modules.util.config.TrainConfig import TrainConfig
 
 from torch import Tensor
 
