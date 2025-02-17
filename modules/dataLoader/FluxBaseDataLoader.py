@@ -2,6 +2,7 @@ import copy
 import os
 
 from modules.dataLoader.BaseDataLoader import BaseDataLoader
+from modules.dataLoader.flex.ShuffleFlexFillMaskChannels import ShuffleFlexFillMaskChannels
 from modules.dataLoader.flux.ShuffleFluxFillMaskChannels import ShuffleFluxFillMaskChannels
 from modules.dataLoader.mixin.DataLoaderText2ImageMixin import DataLoaderText2ImageMixin
 from modules.model.FluxModel import FluxModel
@@ -69,7 +70,13 @@ class FluxBaseDataLoader(
         encode_image = EncodeVAE(in_name='image', out_name='latent_image_distribution', vae=model.vae, autocast_contexts=[model.autocast_context], dtype=model.train_dtype.torch_dtype())
         image_sample = SampleVAEDistribution(in_name='latent_image_distribution', out_name='latent_image', mode='mean')
         downscale_mask = ScaleImage(in_name='mask', out_name='latent_mask', factor=0.125)
-        shuffle_mask_channels = ShuffleFluxFillMaskChannels(in_name='mask', out_name='latent_mask')
+        
+        # Choose the appropriate mask handler based on the model architecture
+        if model.model_spec and model.model_spec.get('modelspec.architecture') == 'Flex.1-alpha':
+            shuffle_mask_channels = ShuffleFlexFillMaskChannels(in_name='mask', out_name='latent_mask')
+        else:
+            shuffle_mask_channels = ShuffleFluxFillMaskChannels(in_name='mask', out_name='latent_mask')
+            
         encode_conditioning_image = EncodeVAE(in_name='conditioning_image', out_name='latent_conditioning_image_distribution', vae=model.vae, autocast_contexts=[model.autocast_context], dtype=model.train_dtype.torch_dtype())
         conditioning_image_sample = SampleVAEDistribution(in_name='latent_conditioning_image_distribution', out_name='latent_conditioning_image', mode='mean')
         tokenize_prompt_1 = Tokenize(in_name='prompt', tokens_out_name='tokens_1', mask_out_name='tokens_mask_1', tokenizer=model.tokenizer_1, max_token_length=model.tokenizer_1.model_max_length)
