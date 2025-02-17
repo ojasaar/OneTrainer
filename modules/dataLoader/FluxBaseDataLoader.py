@@ -72,7 +72,7 @@ class FluxBaseDataLoader(
         downscale_mask = ScaleImage(in_name='mask', out_name='latent_mask', factor=0.125)
         
         # Choose the appropriate mask handler based on the model architecture
-        if model.model_spec and model.model_spec.get('modelspec.architecture') == 'Flex.1-alpha':
+        if model.model_spec and model.model_spec.architecture == 'Flex.1-alpha':
             shuffle_mask_channels = ShuffleFlexFillMaskChannels(in_name='mask', out_name='latent_mask')
         else:
             shuffle_mask_channels = ShuffleFluxFillMaskChannels(in_name='mask', out_name='latent_mask')
