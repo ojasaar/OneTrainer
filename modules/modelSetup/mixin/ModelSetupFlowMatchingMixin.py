@@ -22,6 +22,14 @@ class ModelSetupFlowMatchingMixin(metaclass=ABCMeta):
             batch: dict = None,
             config: TrainConfig = None,
     ) -> tuple[Tensor, Tensor]:
+        # Debug logging to identify context
+        is_training = batch is not None and 'latent_mask' in batch
+        print(f"[FlowMatchingMixin] Context: {'Training' if is_training else 'Sampling'}")
+        if config:
+            print(f"[FlowMatchingMixin] noise_mask enabled: {config.noise_mask}")
+        if is_training:
+            print(f"[FlowMatchingMixin] mask shape: {batch['latent_mask'].shape}, unique values: {torch.unique(batch['latent_mask']).tolist()}")
+
         if self.__sigma is None:
             num_timesteps = timesteps.shape[-1]
             all_timesteps = torch.arange(start=1, end=num_timesteps + 1, step=1, dtype=torch.int32, device=scaled_latent_image.device)
@@ -37,11 +45,19 @@ class ModelSetupFlowMatchingMixin(metaclass=ABCMeta):
             sigmas = sigmas.unsqueeze(-1)
             one_minus_sigmas = one_minus_sigmas.unsqueeze(-1)
 
+        # Calculate the noisy latent image
         scaled_noisy_latent_image = latent_noise.to(dtype=sigmas.dtype) * sigmas \
                                     + scaled_latent_image.to(dtype=sigmas.dtype) * one_minus_sigmas
 
+        # If noise masking is enabled, only apply noise in the masked region
         if config and config.noise_mask and batch and 'latent_mask' in batch:
-            scaled_noisy_latent_image = scaled_noisy_latent_image * batch['latent_mask'] \
-                                      + scaled_latent_image * (1 - batch['latent_mask'])
+            # Apply noise in masked regions (where mask is 1), keep original in unmasked regions
+            print("[FlowMatchingMixin] Applying noise masking")
+            print(f"[FlowMatchingMixin] Before masking - noisy image range: {scaled_noisy_latent_image.min():.3f} to {scaled_noisy_latent_image.max():.3f}")
+            
+            scaled_noisy_latent_image = scaled_noisy_latent_image * (1 - batch['latent_mask']) \
+                                      + scaled_latent_image * batch['latent_mask']
+            
+            print(f"[FlowMatchingMixin] After masking - noisy image range: {scaled_noisy_latent_image.min():.3f} to {scaled_noisy_latent_image.max():.3f}")
 
         return scaled_noisy_latent_image.to(dtype=orig_dtype), sigmas
