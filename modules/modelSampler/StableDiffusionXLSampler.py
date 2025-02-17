@@ -229,6 +229,7 @@ class StableDiffusionXLSampler(BaseModelSampler):
             text_encoder_1_layer_skip: int = 0,
             text_encoder_2_layer_skip: int = 0,
             force_last_timestep: bool = False,
+            sample_config: SampleConfig = None,
             on_update_progress: Callable[[int, int], None] = lambda _, __: None,
     ) -> ModelSamplerOutput:
         with self.model.autocast_context:
@@ -373,7 +374,15 @@ class StableDiffusionXLSampler(BaseModelSampler):
                 # SDXL inpainting is terrible at reconstructing from pure noise.
                 # This removes the last timestep to let the model know about the general image composition and brightness
                 timesteps = timesteps[1:]
-                latent_image = noise_scheduler.add_noise(latent_conditioning_image, latent_image, timesteps[:1])
+                if sample_config and sample_config.noise_mask:
+                    # If noise mask is enabled, only apply noise within the masked region
+                    # First add noise to the conditioning image
+                    noisy_latent = noise_scheduler.add_noise(latent_conditioning_image, latent_image, timesteps[:1])
+                    # Then mask it to only keep noise in the masked region
+                    latent_image = noisy_latent * latent_mask + latent_conditioning_image * (1 - latent_mask)
+                else:
+                    # Default SDXL behavior - add noise to the entire latent
+                    latent_image = noise_scheduler.add_noise(latent_conditioning_image, latent_image, timesteps[:1])
             else:
                 latent_image = latent_image * noise_scheduler.init_noise_sigma
 
@@ -476,6 +485,7 @@ class StableDiffusionXLSampler(BaseModelSampler):
                 text_encoder_1_layer_skip=sample_config.text_encoder_1_layer_skip,
                 text_encoder_2_layer_skip=sample_config.text_encoder_2_layer_skip,
                 force_last_timestep=sample_config.force_last_timestep,
+                sample_config=sample_config,
                 on_update_progress=on_update_progress,
             )
         else:

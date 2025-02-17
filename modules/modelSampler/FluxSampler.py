@@ -238,6 +238,7 @@ class FluxSampler(BaseModelSampler):
             text_encoder_2_layer_skip: int = 0,
             force_last_timestep: bool = False,
             prior_attention_mask: bool = False,
+            sample_config: SampleConfig = None,
             on_update_progress: Callable[[int, int], None] = lambda _, __: None,
     ) -> ModelSamplerOutput:
         with self.model.autocast_context:
@@ -367,6 +368,13 @@ class FluxSampler(BaseModelSampler):
                 device=self.train_device,
                 dtype=torch.float32,
             )
+
+            if sample_inpainting and sample_config and sample_config.noise_mask:
+                # If noise mask is enabled, only apply noise within the masked region
+                # Create a masked noise latent by combining the conditioning latent and noise
+                # Only apply noise where the mask is active (1)
+                masked_noise = latent_image * latent_mask + latent_conditioning_image * (1 - latent_mask)
+                latent_image = masked_noise
 
             image_ids = self.model.prepare_latent_image_ids(
                 height // vae_scale_factor,
@@ -503,6 +511,7 @@ class FluxSampler(BaseModelSampler):
                 text_encoder_2_layer_skip=sample_config.text_encoder_2_layer_skip,
                 force_last_timestep=sample_config.force_last_timestep,
                 prior_attention_mask=sample_config.prior_attention_mask,
+                sample_config=sample_config,
                 on_update_progress=on_update_progress,
             )
         else:

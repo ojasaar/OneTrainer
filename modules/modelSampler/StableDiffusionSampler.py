@@ -199,6 +199,7 @@ class StableDiffusionSampler(BaseModelSampler):
             mask_image_path: str = "",
             text_encoder_layer_skip: int = 0,
             force_last_timestep: bool = False,
+            sample_config: SampleConfig = None,
             on_update_progress: Callable[[int, int], None] = lambda _, __: None,
     ) -> ModelSamplerOutput:
         with self.model.autocast_context:
@@ -314,6 +315,13 @@ class StableDiffusionSampler(BaseModelSampler):
                 dtype=self.model.train_dtype.torch_dtype(),
             ) * noise_scheduler.init_noise_sigma
 
+            # If noise_mask is enabled, only apply noise within the masked region
+            if sample_inpainting and sample_config and sample_config.noise_mask:
+                # Create a masked noise latent by combining the conditioning latent and noise
+                # Only apply noise where the mask is active (1)
+                masked_noise = latent_image * latent_mask + latent_conditioning_image * (1 - latent_mask)
+                latent_image = masked_noise
+
             # denoising loop
             extra_step_kwargs = {}
             if "generator" in set(inspect.signature(noise_scheduler.step).parameters.keys()):
@@ -407,6 +415,7 @@ class StableDiffusionSampler(BaseModelSampler):
                 mask_image_path=sample_config.mask_image_path,
                 text_encoder_layer_skip=sample_config.text_encoder_1_layer_skip,
                 force_last_timestep=sample_config.force_last_timestep,
+                sample_config=sample_config,
                 on_update_progress=on_update_progress,
             )
         else:

@@ -396,6 +396,8 @@ class BaseStableDiffusionXLSetup(
                     latent_noise,
                     timestep,
                     model.noise_scheduler.betas,
+                    batch=batch,
+                    config=config,
                 )
 
                 # original size of the image

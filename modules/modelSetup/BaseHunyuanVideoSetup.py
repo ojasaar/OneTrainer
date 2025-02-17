@@ -304,6 +304,8 @@ class BaseHunyuanVideoSetup(
                 latent_noise,
                 timestep,
                 model.noise_scheduler.timesteps,
+                batch=batch,
+                config=config,
             )
 
             latent_input = scaled_noisy_latent_image

@@ -437,6 +437,8 @@ class BaseFluxSetup(
                 latent_noise,
                 timestep,
                 model.noise_scheduler.timesteps,
+                batch=batch,
+                config=config,
             )
 
             if config.model_type.has_mask_input() and config.model_type.has_conditioning_image_input():

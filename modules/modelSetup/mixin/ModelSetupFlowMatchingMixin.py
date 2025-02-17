@@ -2,6 +2,7 @@ from abc import ABCMeta
 
 import torch
 from torch import Tensor
+from modules.util.config.TrainConfig import TrainConfig
 
 
 class ModelSetupFlowMatchingMixin(metaclass=ABCMeta):
@@ -17,6 +18,9 @@ class ModelSetupFlowMatchingMixin(metaclass=ABCMeta):
             latent_noise: Tensor,
             timestep: Tensor,
             timesteps: Tensor,
+            *,
+            batch: dict = None,
+            config: TrainConfig = None,
     ) -> tuple[Tensor, Tensor]:
         if self.__sigma is None:
             num_timesteps = timesteps.shape[-1]
@@ -35,5 +39,9 @@ class ModelSetupFlowMatchingMixin(metaclass=ABCMeta):
 
         scaled_noisy_latent_image = latent_noise.to(dtype=sigmas.dtype) * sigmas \
                                     + scaled_latent_image.to(dtype=sigmas.dtype) * one_minus_sigmas
+
+        if config and config.noise_mask and batch and 'latent_mask' in batch:
+            scaled_noisy_latent_image = scaled_noisy_latent_image * batch['latent_mask'] \
+                                      + scaled_latent_image * (1 - batch['latent_mask'])
 
         return scaled_noisy_latent_image.to(dtype=orig_dtype), sigmas
