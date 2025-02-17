@@ -78,6 +78,9 @@ class ModelSetupDiffusionLossMixin(metaclass=ABCMeta):
 
         mean_dim = list(range(1, data['predicted'].ndim))
 
+        # Check if we're using a Flex model
+        is_flex_model = hasattr(config, 'model_spec') and config.model_spec and config.model_spec.architecture == 'Flex.1-alpha'
+
         # MSE/L2 Loss
         if config.mse_strength != 0:
             losses += masked_losses(
@@ -89,6 +92,7 @@ class ModelSetupDiffusionLossMixin(metaclass=ABCMeta):
                 mask=batch['latent_mask'].to(dtype=torch.float32),
                 unmasked_weight=config.unmasked_weight,
                 normalize_masked_area_loss=config.normalize_masked_area_loss,
+                is_flex_model=is_flex_model,
             ).mean(mean_dim) * config.mse_strength
 
         # MAE/L1 Loss
@@ -102,6 +106,7 @@ class ModelSetupDiffusionLossMixin(metaclass=ABCMeta):
                 mask=batch['latent_mask'].to(dtype=torch.float32),
                 unmasked_weight=config.unmasked_weight,
                 normalize_masked_area_loss=config.normalize_masked_area_loss,
+                is_flex_model=is_flex_model,
             ).mean(mean_dim) * config.mae_strength
 
         # log-cosh Loss
@@ -114,6 +119,7 @@ class ModelSetupDiffusionLossMixin(metaclass=ABCMeta):
                 mask=batch['latent_mask'].to(dtype=torch.float32),
                 unmasked_weight=config.unmasked_weight,
                 normalize_masked_area_loss=config.normalize_masked_area_loss,
+                is_flex_model=is_flex_model,
             ).mean(mean_dim) * config.log_cosh_strength
 
         # VB loss
@@ -130,6 +136,7 @@ class ModelSetupDiffusionLossMixin(metaclass=ABCMeta):
                 mask=batch['latent_mask'].to(dtype=torch.float32),
                 unmasked_weight=config.unmasked_weight,
                 normalize_masked_area_loss=config.normalize_masked_area_loss,
+                is_flex_model=is_flex_model,
             ).mean(mean_dim) * config.vb_loss_strength
 
         return losses
