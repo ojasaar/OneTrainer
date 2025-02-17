@@ -19,11 +19,14 @@ def masked_losses(
     # Ensure mask is binary
     mask = (mask > 0.5).to(mask.dtype)
     
-    clamped_mask = torch.clamp(mask, unmasked_weight, 1)
+    # Apply unmasked weight to non-masked regions
+    clamped_mask = torch.where(mask > 0.5, torch.ones_like(mask), torch.ones_like(mask) * unmasked_weight)
     losses *= clamped_mask
 
     if normalize_masked_area_loss:
-        losses = losses / clamped_mask.mean(dim=(1, 2, 3), keepdim=True)
+        # Calculate mean only over masked regions to avoid division by small numbers
+        masked_mean = (losses * mask).sum(dim=(1, 2, 3), keepdim=True) / (mask.sum(dim=(1, 2, 3), keepdim=True) + 1e-6)
+        losses = losses / (masked_mean + 1e-6)
 
     del clamped_mask
     return losses

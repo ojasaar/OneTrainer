@@ -372,8 +372,9 @@ class FluxSampler(BaseModelSampler):
             if sample_inpainting and sample_config and sample_config.noise_mask:
                 # If noise mask is enabled, only apply noise within the masked region
                 # Create a masked noise latent by combining the conditioning latent and noise
-                # Only apply noise where the mask is active (1)
-                masked_noise = latent_image * latent_mask + latent_conditioning_image * (1 - latent_mask)
+                # Only apply noise where the mask is 1 (masked regions), keep original in unmasked regions (0)
+                binary_mask = (latent_mask > 0.5).to(latent_mask.dtype)
+                masked_noise = latent_image * binary_mask + latent_conditioning_image * (1 - binary_mask)
                 latent_image = masked_noise
 
             image_ids = self.model.prepare_latent_image_ids(

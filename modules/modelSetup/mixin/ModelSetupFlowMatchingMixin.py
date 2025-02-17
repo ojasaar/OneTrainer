@@ -56,9 +56,8 @@ class ModelSetupFlowMatchingMixin(metaclass=ABCMeta):
             print("[FlowMatchingMixin] Applying noise masking")
             print(f"[FlowMatchingMixin] Before masking - noisy image range: {scaled_noisy_latent_image.min():.3f} to {scaled_noisy_latent_image.max():.3f}")
             
-            # Apply noise in masked regions (where mask is 1), keep original in unmasked regions
-            scaled_noisy_latent_image = scaled_noisy_latent_image * (1 - binary_mask) \
-                                      + scaled_latent_image * binary_mask
+            # Apply noise in masked regions (where mask is 1), keep original in unmasked regions (0)
+            scaled_noisy_latent_image = scaled_noisy_latent_image * binary_mask + scaled_latent_image * (1 - binary_mask)
             
             print(f"[FlowMatchingMixin] After masking - noisy image range: {scaled_noisy_latent_image.min():.3f} to {scaled_noisy_latent_image.max():.3f}")
 
