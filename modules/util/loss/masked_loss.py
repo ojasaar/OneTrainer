@@ -12,13 +12,20 @@ def masked_losses(
     print(f"\nMasked Losses Debug:")
     print(f"Input losses shape: {losses.shape}")
     print(f"Input mask shape: {mask.shape}")
-    print(f"Is Flex model: {is_flex_model}")
-
-    # For Flex models, reshape the mask from [16, h, w] to [64, h, w] to match the model's output dimensions
-    if is_flex_model:
-        # Repeat each channel 4 times to go from 16 to 64 channels
-        mask = mask.repeat_interleave(4, dim=0)
-        print(f"Reshaped mask shape (after repeat_interleave): {mask.shape}")
+    
+    # Check if we need to reshape based on actual dimensions
+    if losses.shape[1] != mask.shape[1]:
+        print(f"Dimension mismatch - adjusting mask channels")
+        if losses.shape[1] == 16 and mask.shape[1] == 64:
+            # Need to reduce mask channels from 64 to 16
+            mask = mask.view(mask.shape[0], 16, 4, *mask.shape[2:]).mean(dim=2)
+            print(f"Reduced mask shape: {mask.shape}")
+        elif losses.shape[1] == 64 and mask.shape[1] == 16:
+            # Need to expand mask channels from 16 to 64
+            mask = mask.repeat_interleave(4, dim=1)
+            print(f"Expanded mask shape: {mask.shape}")
+        else:
+            raise ValueError(f"Unsupported channel dimensions: losses {losses.shape[1]}, mask {mask.shape[1]}")
 
     clamped_mask = torch.clamp(mask, unmasked_weight, 1)
     print(f"Clamped mask shape: {clamped_mask.shape}")
