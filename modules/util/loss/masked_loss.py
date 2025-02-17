@@ -9,13 +9,16 @@ def masked_losses(
         normalize_masked_area_loss: bool,
         is_flex_model: bool = False,
 ) -> Tensor:
-    # Adjust mask channels if needed (64->16 for Flex model compatibility)
+    # If mask has fewer channels than losses, repeat it to match
     if losses.shape[1] != mask.shape[1]:
-        if losses.shape[1] == 16 and mask.shape[1] == 64:
-            mask = mask.view(mask.shape[0], 16, 4, *mask.shape[2:]).mean(dim=2)
+        if mask.shape[1] == 1:
+            mask = mask.repeat(1, losses.shape[1], 1, 1)
         else:
             raise ValueError(f"Unsupported channel dimensions: losses {losses.shape[1]}, mask {mask.shape[1]}")
 
+    # Ensure mask is binary
+    mask = (mask > 0.5).to(mask.dtype)
+    
     clamped_mask = torch.clamp(mask, unmasked_weight, 1)
     losses *= clamped_mask
 

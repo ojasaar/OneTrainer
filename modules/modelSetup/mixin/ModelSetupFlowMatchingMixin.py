@@ -27,8 +27,6 @@ class ModelSetupFlowMatchingMixin(metaclass=ABCMeta):
         print(f"[FlowMatchingMixin] Context: {'Training' if is_training else 'Sampling'}")
         if config:
             print(f"[FlowMatchingMixin] noise_mask enabled: {config.noise_mask}")
-        if is_training:
-            print(f"[FlowMatchingMixin] mask shape: {batch['latent_mask'].shape}, unique values: {torch.unique(batch['latent_mask']).tolist()}")
 
         if self.__sigma is None:
             num_timesteps = timesteps.shape[-1]
@@ -51,12 +49,16 @@ class ModelSetupFlowMatchingMixin(metaclass=ABCMeta):
 
         # If noise masking is enabled, only apply noise in the masked region
         if config and config.noise_mask and batch and 'latent_mask' in batch:
-            # Apply noise in masked regions (where mask is 1), keep original in unmasked regions
+            # Binarize the mask
+            binary_mask = (batch['latent_mask'] > 0.5).to(batch['latent_mask'].dtype)
+            print(f"[FlowMatchingMixin] mask shape: {binary_mask.shape}, unique values after binarization: {torch.unique(binary_mask).tolist()}")
+            
             print("[FlowMatchingMixin] Applying noise masking")
             print(f"[FlowMatchingMixin] Before masking - noisy image range: {scaled_noisy_latent_image.min():.3f} to {scaled_noisy_latent_image.max():.3f}")
             
-            scaled_noisy_latent_image = scaled_noisy_latent_image * (1 - batch['latent_mask']) \
-                                      + scaled_latent_image * batch['latent_mask']
+            # Apply noise in masked regions (where mask is 1), keep original in unmasked regions
+            scaled_noisy_latent_image = scaled_noisy_latent_image * (1 - binary_mask) \
+                                      + scaled_latent_image * binary_mask
             
             print(f"[FlowMatchingMixin] After masking - noisy image range: {scaled_noisy_latent_image.min():.3f} to {scaled_noisy_latent_image.max():.3f}")
 
